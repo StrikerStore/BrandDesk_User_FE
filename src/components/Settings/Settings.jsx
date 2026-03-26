@@ -4,7 +4,7 @@ import {
   fetchUsers, createUser, deactivateUser,
   fetchBrands, createBrand, updateBrand, deleteBrand, disconnectShopify,
   fetchAuthStatus, updateWorkspace, fetchWorkspaceMembers,
-  initiateSubscription, fetchSubscription, cancelSubscription, validateCoupon,
+  initiateSubscription, fetchSubscription, cancelSubscription, validateCoupon, fetchInvoice,
   fetchGmailLabels, fetchPlanUsage,
   requestNewBrand, fetchGmailAccounts, linkGmail,
   fetchSupportTickets, createSupportTicket, fetchSupportTicket, replySupportTicket,
@@ -55,6 +55,7 @@ export default function Settings({ onClose, user }) {
   const [couponStatus, setCouponStatus]     = useState(null); // null | 'validating' | 'valid' | 'invalid'
   const [couponData, setCouponData]         = useState(null);
   const [couponError, setCouponError]       = useState('');
+  const [customerGst, setCustomerGst]       = useState('');
   // Gmail labels
   const [gmailLabels, setGmailLabels]       = useState([]);
   const [labelsLoading, setLabelsLoading]   = useState(false);
@@ -351,6 +352,7 @@ export default function Settings({ onClose, user }) {
       if (couponStatus === 'valid' && couponCode.trim()) {
         payload.coupon_code = couponCode.trim();
       }
+      if (customerGst.trim()) payload.customer_gst = customerGst.trim();
       const { data } = await initiateSubscription(payload);
       // Auto-submit hidden form to PayU
       const form = document.createElement('form');
@@ -546,6 +548,13 @@ export default function Settings({ onClose, user }) {
                             <div style={{ marginBottom: 12, padding: '6px 12px', borderRadius: 6, background: '#fef2f2', color: '#dc2626', fontSize: 12 }}>{couponError}</div>
                           )}
 
+                          {/* GST Number (optional) */}
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: '0.5px' }}>4. GST Number (optional)</div>
+                          <input type="text" placeholder="Enter your GSTIN to claim GST credit" value={customerGst}
+                            onChange={e => setCustomerGst(e.target.value.toUpperCase())}
+                            style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, width: 260, textTransform: 'uppercase', marginBottom: 8 }}
+                          />
+
                           {/* Order Summary */}
                           <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: 'var(--bg-primary, #f9fafb)', border: '1px solid var(--border)' }}>
                             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Order Summary</div>
@@ -559,13 +568,18 @@ export default function Settings({ onClose, user }) {
                                 <span>- ₹{getDiscount(selectedPlan, billingCycle, couponData).toLocaleString('en-IN')}</span>
                               </div>
                             )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                              <span>GST (18%)</span>
+                              <span>₹{Math.round(getFinalAmount(selectedPlan, billingCycle, couponData) * 0.18).toLocaleString('en-IN')}</span>
+                            </div>
                             <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700 }}>
                               <span>Total Payable</span>
-                              <span style={{ color: 'var(--accent)' }}>₹{getFinalAmount(selectedPlan, billingCycle, couponData).toLocaleString('en-IN')}</span>
+                              <span style={{ color: 'var(--accent)' }}>₹{Math.round(getFinalAmount(selectedPlan, billingCycle, couponData) * 1.18).toLocaleString('en-IN')}</span>
                             </div>
+                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Inclusive of 18% GST</div>
                             <button onClick={() => handleUpgrade(selectedPlan)} disabled={upgrading}
                               style={{ width: '100%', marginTop: 14, padding: '12px 0', borderRadius: 8, fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', background: 'var(--accent)', color: '#fff', opacity: upgrading ? 0.7 : 1 }}>
-                              {upgrading ? 'Redirecting to payment…' : `Pay ₹${getFinalAmount(selectedPlan, billingCycle, couponData).toLocaleString('en-IN')} →`}
+                              {upgrading ? 'Redirecting to payment…' : `Pay ₹${Math.round(getFinalAmount(selectedPlan, billingCycle, couponData) * 1.18).toLocaleString('en-IN')} →`}
                             </button>
                           </div>
                         </>
@@ -610,13 +624,28 @@ export default function Settings({ onClose, user }) {
                               {txn.status === 'success' ? '✓' : '✕'}
                             </div>
                             <div>
-                              <div className={styles.userRowName}>₹{txn.amount}</div>
+                              <div className={styles.userRowName}>₹{txn.amount}{txn.invoice_number ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 6 }}>{txn.invoice_number}</span> : ''}</div>
                               <div className={styles.userRowEmail}>
                                 {new Date(txn.created_at).toLocaleDateString()} · {txn.payment_method || 'N/A'}
+                                {txn.plan_name ? ` · ${txn.plan_name}` : ''}
+                                {txn.coupon_code ? ` · Coupon: ${txn.coupon_code}` : ''}
                               </div>
                             </div>
                           </div>
-                          <div className={styles.userRowRight}>
+                          <div className={styles.userRowRight} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {txn.status === 'success' && (
+                              <button onClick={async () => {
+                                try {
+                                  const { data: inv } = await fetchInvoice(txn.txn_id);
+                                  const w = window.open('', '_blank');
+                                  if (!w) { alert('Allow pop-ups to view invoice'); return; }
+                                  w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number || ''}</title><style>body{font-family:Inter,Arial,sans-serif;margin:0;padding:32px;color:#1a1a1a;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:32px}.title{font-size:22px;font-weight:700}.meta{text-align:right;font-size:12px;color:#555}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}.box{border:1px solid #e5e7eb;border-radius:8px;padding:14px;font-size:12px;line-height:1.8}.box-label{font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:10px;color:#888;margin-bottom:6px}table{width:100%;border-collapse:collapse;margin-bottom:20px}th{text-align:left;font-size:11px;text-transform:uppercase;color:#888;padding:8px 10px;border-bottom:2px solid #e5e7eb}td{padding:8px 10px;border-bottom:1px solid #f0f0f0}.total-row td{font-weight:700;font-size:14px;border-top:2px solid #111;border-bottom:none}.footer{text-align:center;margin-top:32px;font-size:11px;color:#888}@media print{body{padding:20px}button{display:none!important}}</style></head><body><div class="header"><div><div class="title">${inv.company_name||'BrandDesk'}</div><div style="font-size:12px;color:#555;margin-top:4px">${inv.company_address||''}</div>${inv.gst_number?`<div style="font-size:12px;color:#555">GSTIN: ${inv.gst_number}</div>`:''}</div><div class="meta"><div style="font-size:18px;font-weight:700;color:#111">TAX INVOICE</div><div>Invoice: <strong>${inv.invoice_number||'N/A'}</strong></div><div>Date: ${new Date(inv.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>${inv.payu_mihpayid?`<div>PayU Ref: ${inv.payu_mihpayid}</div>`:''}</div></div><div class="grid"><div class="box"><div class="box-label">Bill To</div><div style="font-weight:600">${inv.workspace_name||'Customer'}</div>${inv.customer_gst?`<div>GSTIN: ${inv.customer_gst}</div>`:''}</div><div class="box"><div class="box-label">Payment Details</div><div>Method: ${inv.payment_method||'N/A'}</div><div>Status: ${inv.status}</div><div>Txn ID: ${inv.txn_id}</div></div></div><table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody><tr><td>${inv.plan_name||'Subscription'} — ${inv.billing_cycle||''}</td><td style="text-align:right">₹${parseFloat(inv.base_amount||inv.amount).toLocaleString('en-IN')}</td></tr>${inv.coupon_code?`<tr><td>Discount (${inv.coupon_code})</td><td style="text-align:right;color:#16a34a">- ₹${parseFloat(inv.coupon_discount||0).toLocaleString('en-IN')}</td></tr>`:''}${parseFloat(inv.gst_amount)>0?`<tr><td>GST (${inv.gst_percent||18}%)</td><td style="text-align:right">₹${parseFloat(inv.gst_amount).toLocaleString('en-IN')}</td></tr>`:''}<tr class="total-row"><td>Total</td><td style="text-align:right">₹${parseFloat(inv.amount).toLocaleString('en-IN')}</td></tr></tbody></table><div class="footer">Thank you for your business!</div><div style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:10px 24px;border:none;border-radius:6px;background:#4f46e5;color:#fff;font-size:13px;cursor:pointer">Print / Download PDF</button></div></body></html>`);
+                                  w.document.close();
+                                } catch { alert('Failed to load invoice'); }
+                              }} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                Invoice
+                              </button>
+                            )}
                             <span className={`${styles.userRole} ${txn.status === 'success' ? styles.userRoleAdmin : ''}`}
                               style={txn.status !== 'success' ? { color: '#991b1b', background: '#fee2e2' } : {}}>
                               {txn.status}

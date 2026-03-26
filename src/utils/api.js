@@ -121,6 +121,7 @@ export const fetchSubscription    = ()     => api.get('/api/subscriptions/curren
 export const fetchPlanUsage       = ()     => api.get('/api/subscriptions/usage');
 export const cancelSubscription   = ()     => api.post('/api/subscriptions/cancel');
 export const validateCoupon       = (data) => api.post('/api/subscriptions/validate-coupon', data);
+export const fetchInvoice         = (txnId) => api.get(`/api/subscriptions/invoice/${txnId}`);
 
 // Support tickets
 export const fetchSupportTickets = ()         => api.get('/api/support/tickets');
