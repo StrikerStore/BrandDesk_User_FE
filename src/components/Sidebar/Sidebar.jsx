@@ -198,7 +198,7 @@ export default function Sidebar({
                   <div className={styles.userInfo}>
                     <div className={styles.userName}>{user?.name}</div>
                     <div className={styles.userEmail}>{user?.email}</div>
-                    <span className={`${styles.userRole} ${user?.role === 'admin' ? styles.userRoleAdmin : ''}`}>
+                    <span className={`${styles.userRole} ${['admin', 'owner'].includes(user?.role) ? styles.userRoleAdmin : ''}`}>
                       {user?.role}
                     </span>
                   </div>
