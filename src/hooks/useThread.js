@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchThread, updateThread, sendReply as apiSendReply } from '../utils/api';
 
 export function useThread(threadId) {
@@ -7,10 +7,11 @@ export function useThread(threadId) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
+  const pollRef = useRef(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (showLoader = true) => {
     if (!threadId) return;
-    setLoading(true);
+    if (showLoader) setLoading(true);
     try {
       const { data } = await fetchThread(threadId);
       setThread(data.thread);
@@ -24,8 +25,15 @@ export function useThread(threadId) {
   }, [threadId]);
 
   useEffect(() => {
-    load();
+    load(true);
   }, [load]);
+
+  // Poll for new messages every 15 seconds (silent — no loading indicator)
+  useEffect(() => {
+    if (!threadId) return;
+    pollRef.current = setInterval(() => load(false), 15000);
+    return () => clearInterval(pollRef.current);
+  }, [threadId, load]);
 
   const patchStatus = useCallback(async (status) => {
     if (!thread) return;
