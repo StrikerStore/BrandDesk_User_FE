@@ -980,12 +980,16 @@ export default function Settings({ onClose, user }) {
                       </div>
                     </div>
                     <div className={styles.userRowRight}>
-                      {b.shopify_store && !b.shopify_connected && (
-                        <a className={styles.testBtn}
-                          style={{ padding: '3px 10px', fontSize: 11, textDecoration: 'none' }}
-                          href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/auth/shopify?brand_id=${b.id}&shop=${encodeURIComponent(b.shopify_store)}`}>
+                      {!b.shopify_connected && (
+                        <button className={styles.testBtn}
+                          style={{ padding: '3px 10px', fontSize: 11 }}
+                          onClick={() => {
+                            const shop = b.shopify_store || prompt('Enter your Shopify store domain (e.g. my-store.myshopify.com)');
+                            if (!shop?.trim()) return;
+                            window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/auth/shopify?brand_id=${b.id}&shop=${encodeURIComponent(shop.trim())}`;
+                          }}>
                           Connect Shopify
-                        </a>
+                        </button>
                       )}
                       {b.shopify_connected && (
                         <button className={styles.deactivateBtn} style={{ fontSize: 10, padding: '2px 8px' }}
