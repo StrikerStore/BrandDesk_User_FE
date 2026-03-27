@@ -90,8 +90,18 @@ export default function OrderPanel({ thread }) {
           {loading && <div className={styles.loading}><span className={styles.spinner} />Loading order…</div>}
 
           {error && (
-            <div className={styles.errorBox}>
-              {error === 'Order not found' ? `Order ${orderId} not found in the database` : error}
+            <div style={{
+              padding: '16px 14px', borderRadius: 8,
+              border: '1px dashed var(--border, #e5e7eb)',
+              background: 'var(--bg-secondary, #f9fafb)',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                Order {orderId}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+                Order tracking info, product details, and shipping status will appear here once your Shopify store is connected via the app.
+              </div>
             </div>
           )}
 

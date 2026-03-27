@@ -1,11 +1,43 @@
+import { useState } from 'react';
 import styles from './LoginPage.module.css';
 import logo from '../assets/logo.png';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export default function LoginPage() {
+export default function LoginPage({ onLogin }) {
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
+
   const handleGoogleSignIn = () => {
     window.location.href = `${API_URL}/auth/google/signin?intent=login`;
+  };
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Login failed');
+        return;
+      }
+      if (data.token) localStorage.setItem('bd_token', data.token);
+      onLogin(data);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,6 +60,52 @@ export default function LoginPage() {
           </svg>
           Sign in with Google
         </button>
+
+        {!showEmail ? (
+          <p style={{ textAlign: 'center', fontSize: 13, marginTop: 16, marginBottom: 0 }}>
+            <button
+              onClick={() => setShowEmail(true)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                color: 'var(--text-secondary)', fontSize: 13, textDecoration: 'underline',
+              }}>
+              Sign in with email instead
+            </button>
+          </p>
+        ) : (
+          <form className={styles.form} onSubmit={handleEmailLogin} style={{ marginTop: 16 }}>
+            <div className={styles.field}>
+              <label className={styles.label}>Email</label>
+              <input
+                className={styles.input}
+                type="email" required placeholder="you@example.com"
+                value={email} onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>Password</label>
+              <input
+                className={styles.input}
+                type="password" required placeholder="Your password"
+                value={password} onChange={e => setPassword(e.target.value)}
+              />
+            </div>
+            {error && <div className={styles.error}>{error}</div>}
+            <button className={styles.btn} type="submit" disabled={loading}>
+              {loading ? 'Signing in\u2026' : 'Sign in'}
+            </button>
+            <p style={{ textAlign: 'center', fontSize: 12, margin: 0 }}>
+              <button
+                type="button" onClick={() => { setShowEmail(false); setError(''); }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  color: 'var(--text-tertiary)', fontSize: 12,
+                }}>
+                Back to Google sign-in
+              </button>
+            </p>
+          </form>
+        )}
 
         <p className={styles.signupHint}>
           Don't have an account? <a href={`${API_URL}/auth/google/signin?intent=signup`}>Sign up</a>
