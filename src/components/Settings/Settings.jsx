@@ -313,16 +313,17 @@ export default function Settings({ onClose, user }) {
   const openInvoicePrint = (inv) => {
     const w = window.open('', '_blank');
     if (!w) { alert('Allow pop-ups to view invoice'); return; }
+    const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+    const cur = (v) => `₹${parseFloat(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
     const gstRow = parseFloat(inv.gst_amount) > 0
-      ? `<tr><td>GST (${inv.gst_percent || 18}%)</td><td style="text-align:right">₹${parseFloat(inv.gst_amount).toLocaleString('en-IN')}</td></tr>`
+      ? `<tr><td>GST (${inv.gst_percent || 18}%)</td><td style="text-align:right">${cur(inv.gst_amount)}</td></tr>`
       : '';
     const couponRow = inv.coupon_code
-      ? `<tr><td>Discount (${inv.coupon_code})</td><td style="text-align:right;color:#16a34a">- ₹${parseFloat(inv.coupon_discount || 0).toLocaleString('en-IN')}</td></tr>`
+      ? `<tr><td>Discount (${inv.coupon_code})</td><td style="text-align:right;color:#16a34a">- ${cur(inv.coupon_discount)}</td></tr>`
       : '';
     const gstinRow = inv.gst_number ? `<div style="font-size:12px;color:#555">GSTIN: ${inv.gst_number}</div>` : '';
     const payuRow  = inv.payu_mihpayid ? `<div>PayU Ref: ${inv.payu_mihpayid}</div>` : '';
     const custGst  = inv.customer_gst ? `<div>GSTIN: ${inv.customer_gst}</div>` : '';
-    const dateStr  = new Date(inv.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number || ''}</title>
 <style>
   body{font-family:Inter,Arial,sans-serif;margin:0;padding:32px;color:#1a1a1a;font-size:13px}
@@ -334,6 +335,7 @@ export default function Settings({ onClose, user }) {
   table{width:100%;border-collapse:collapse;margin-bottom:20px}
   th{text-align:left;font-size:11px;text-transform:uppercase;color:#888;padding:8px 10px;border-bottom:2px solid #e5e7eb}
   td{padding:8px 10px;border-bottom:1px solid #f0f0f0}
+  .sub td{font-weight:600;border-bottom:1px solid #e5e7eb}
   .tot td{font-weight:700;font-size:14px;border-top:2px solid #111;border-bottom:none}
   .footer{text-align:center;margin-top:32px;font-size:11px;color:#888}
   @media print{button{display:none!important}}
@@ -342,18 +344,30 @@ export default function Settings({ onClose, user }) {
   <div><div class="title">${inv.company_name || 'BrandDesk'}</div>
     <div style="font-size:12px;color:#555;margin-top:4px">${inv.company_address || ''}</div>${gstinRow}</div>
   <div class="meta"><div style="font-size:18px;font-weight:700;color:#111">TAX INVOICE</div>
-    <div>Invoice: <strong>${inv.invoice_number || 'N/A'}</strong></div>
-    <div>Date: ${dateStr}</div>${payuRow}</div>
+    <div>Invoice No: <strong>${inv.invoice_number || 'N/A'}</strong></div>
+    <div>Date: ${fmt(inv.created_at)}</div>${payuRow}</div>
 </div>
 <div class="grid">
-  <div class="box"><div class="lbl">Bill To</div><div style="font-weight:600">${inv.workspace_name || 'Customer'}</div>${custGst}</div>
-  <div class="box"><div class="lbl">Payment</div><div>Method: ${inv.payment_method || 'N/A'}</div><div>Status: ${inv.status}</div><div>Txn: ${inv.txn_id}</div></div>
+  <div class="box"><div class="lbl">Bill To</div>
+    <div style="font-weight:600">${inv.workspace_name || 'Customer'}</div>${custGst}</div>
+  <div class="box"><div class="lbl">Subscription Details</div>
+    <div>Plan: <strong>${inv.plan_name || 'N/A'}</strong> (${inv.billing_cycle || 'N/A'})</div>
+    <div>Valid From: ${fmt(inv.period_start)}</div>
+    <div>Valid Until: ${fmt(inv.period_end)}</div></div>
 </div>
 <table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>
-  <tr><td>${inv.plan_name || 'Subscription'} — ${inv.billing_cycle || ''}</td><td style="text-align:right">₹${parseFloat(inv.base_amount || inv.amount).toLocaleString('en-IN')}</td></tr>
-  ${couponRow}${gstRow}
-  <tr class="tot"><td>Total</td><td style="text-align:right">₹${parseFloat(inv.amount).toLocaleString('en-IN')}</td></tr>
+  <tr><td>${inv.plan_name || 'Subscription'} — ${inv.billing_cycle || ''}</td><td style="text-align:right">${cur(inv.base_amount || inv.amount)}</td></tr>
+  ${couponRow}
+  <tr class="sub"><td>Subtotal</td><td style="text-align:right">${cur((parseFloat(inv.base_amount || inv.amount) - parseFloat(inv.coupon_discount || 0)))}</td></tr>
+  ${gstRow}
+  <tr class="tot"><td>Total Amount</td><td style="text-align:right">${cur(inv.amount)}</td></tr>
 </tbody></table>
+<div class="grid">
+  <div class="box"><div class="lbl">Payment Info</div>
+    <div>Method: ${inv.payment_method || 'N/A'}</div>
+    <div>Status: <strong>${inv.status}</strong></div>
+    <div>Transaction ID: ${inv.txn_id}</div></div>
+</div>
 <div class="footer">Thank you for your business! This is a computer-generated invoice.</div>
 <div style="text-align:center;margin-top:20px">
   <button onclick="window.print()" style="padding:10px 24px;border:none;border-radius:6px;background:#4f46e5;color:#fff;font-size:13px;cursor:pointer">Print / Download PDF</button>
