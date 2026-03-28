@@ -984,8 +984,15 @@ export default function Settings({ onClose, user }) {
                               {b.widget_token.slice(0, 16)}…
                             </code>
                             <button
-                              style={{ fontSize: 10, padding: '1px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 4, background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                              onClick={() => { navigator.clipboard.writeText(b.widget_token); }}
+                              style={{ fontSize: 10, padding: '1px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 4, background: 'none', cursor: 'pointer', color: 'var(--text-secondary)', transition: 'all 0.2s' }}
+                              onClick={(e) => {
+                                navigator.clipboard.writeText(b.widget_token);
+                                const btn = e.currentTarget;
+                                btn.textContent = 'Copied!';
+                                btn.style.color = '#16a34a';
+                                btn.style.borderColor = '#16a34a';
+                                setTimeout(() => { btn.textContent = 'Copy'; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+                              }}
                             >Copy</button>
                           </div>
                         )}
