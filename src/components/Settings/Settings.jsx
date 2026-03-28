@@ -977,6 +977,18 @@ export default function Settings({ onClose, user }) {
                             )}
                           </div>
                         )}
+                        {b.shopify_connected && b.widget_token && (
+                          <div style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>Widget Token:</span>
+                            <code style={{ fontFamily: 'monospace', fontSize: 10, background: 'var(--bg-secondary, #f3f4f6)', padding: '1px 6px', borderRadius: 4, letterSpacing: 0.3 }}>
+                              {b.widget_token.slice(0, 16)}…
+                            </code>
+                            <button
+                              style={{ fontSize: 10, padding: '1px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 4, background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                              onClick={() => { navigator.clipboard.writeText(b.widget_token); }}
+                            >Copy</button>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className={styles.userRowRight}>
